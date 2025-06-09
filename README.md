@@ -1,52 +1,68 @@
-# alcampo-loyalty-card-bot
-A Telegram bot to fetch loyalty card QR codes, serving as a case study in web automation and mobile application security analysis.
-# Bot de Telegram para Tarjeta de Fidelidad: Un Estudio de Caso
+# Estudio de Caso: Análisis de Seguridad y Automatización de una Aplicación Híbrida
 
-Este repositorio contiene el código de un bot de Telegram diseñado para obtener el código QR de una tarjeta de fidelidad. Más que una simple herramienta, este proyecto es un estudio de caso práctico sobre resolución de problemas, análisis de seguridad de aplicaciones y automatización web.
+Este repositorio documenta una investigación de una semana sobre los mecanismos de seguridad y el flujo de autenticación de una aplicación comercial de gran distribución. El objetivo inicial era crear un bot de Telegram para automatizar la obtención de un código QR de fidelidad, pero el proyecto evolucionó hasta convertirse en un profundo análisis de ingeniería inversa y depuración multiplataforma.
 
-## Objetivo del Proyecto
+El proyecto concluye que la automatización completa y dinámica es inviable debido a múltiples capas de seguridad de nivel empresarial, incluyendo defensas anti-bot basadas en "fingerprinting" de navegador. Este documento sirve como un estudio de caso detallado del proceso de investigación.
 
-El objetivo principal era puramente educativo: aplicar y comprender en un entorno real las técnicas de análisis de seguridad, bypass de protecciones y automatización para interactuar con los servicios de una aplicación comercial de gran distribución.
-
-## Arquitectura Final
-
-La solución final es un **bot de Telegram híbrido** construido en Python que funciona de la siguiente manera:
-1.  Un usuario envía un comando `/qr` con sus credenciales (`email:contraseña`).
-2.  El bot de Telegram (construido con `aiogram`) recibe el mensaje.
-3.  Llama a un "motor" de automatización (construido con **Playwright**) que se ejecuta en modo *headless*.
-4.  Este motor realiza el complejo flujo de login basado en web (Salesforce OAuth) para obtener un **token de sesión `Bearer`**. Lo hace espiando las peticiones de red que la propia página genera tras un login exitoso.
-5.  Una vez obtenido el token, el navegador se cierra.
-6.  El bot usa el token capturado y la librería **`requests`** para hacer una llamada directa y autenticada a la API interna de la aplicación.
-7.  La respuesta de la API (un JSON) contiene los datos del QR, que se descargan y se envían de vuelta al usuario como una imagen a través de Telegram.
-
-## Stack Tecnológico y Habilidades Demostradas
+## Stack Tecnológico y Habilidades Aplicadas
 
 * **Lenguaje:** Python
-* **Automatización Web:** Playwright
-* **Bots:** Aiogram (python-telegram-bot)
-* **Análisis de Tráfico:** Burp Suite, Frida
-* **Entornos Móviles:** Android Studio, AVD (Emuladores Android), ADB
-* **Redes:** Configuración de Proxy, redirección con `iptables`
-* **Seguridad:** Bypass de SSL Pinning, análisis de defensas Anti-Debugging y Anti-Root
-* **Ingeniería Inversa:** JADX-GUI (Análisis Estático)
-* **Entorno de Desarrollo:** Gestión de entornos virtuales (`venv`), manejo de secretos con variables de entorno (`.env`).
+* **Automatización y Testing:** Playwright
+* **Análisis de Seguridad Móvil:** Frida, Burp Suite
+* **Redes:** `iptables` (Redirección de tráfico), Configuración de Proxy (Visible e Invisible)
+* **Entornos Android:** Android Studio, AVD Manager, ADB (Android Debug Bridge), Rooting
+* **Ingeniería Inversa Estática:** JADX-GUI
+* **Desarrollo de Bots:** `python-telegram-bot` (aiogram)
+* **Entorno de Desarrollo:** `venv` (Entornos Virtuales), `dotenv` (Gestión de Secretos), `git` y GitHub.
+* **Sistemas Operativos:** Depuración y resolución de problemas en macOS (Apple Silicon M2) y Windows 10/11 (x86_64).
 
-## Retos Superados y Evolución del Proyecto
+## La Odisea: Crónica de una Investigación
 
-El desarrollo de este bot fue un proceso iterativo y una lección de perseverancia a través de múltiples obstáculos técnicos:
+El camino para llegar a la conclusión final fue un laberinto de obstáculos técnicos, donde cada solución revelaba un nuevo desafío.
 
-1.  **Reto 1: Modificación del Sistema en Emuladores (macOS M2):** El plan inicial de interceptar el tráfico de la app móvil falló debido a las particiones de sistema de "solo lectura" en las imágenes AVD modernas para Apple Silicon. Ni `adb remount` ni el arranque en modo `-writable-system` fueron suficientes, demostrando la necesidad de cambiar a una estrategia que no requiriera modificar el sistema.
+### Fase 1: El Muro del Emulador en macOS (Apple Silicon)
 
-2.  **Reto 2: Incompatibilidad de Herramientas (macOS M2):** Se intentó pivotar a un bot de automatización web, pero tanto Playwright como Selenium resultaron ser inestables en el entorno de pruebas (macOS con Apple Silicon), crasheando de forma silenciosa.
+El plan inicial consistía en seguir el método estándar de interceptación móvil: rootear un emulador de Android e instalar un certificado de sistema.
 
-3.  **Reto 3: Éxito y Diagnóstico en Windows:** Al migrar el entorno a una máquina con Windows (x86_64), las herramientas de automatización funcionaron perfectamente. Esto permitió depurar el flujo de login y descubrir que la app móvil en realidad utiliza un `WebView` con un flujo de autenticación web de Salesforce.
+* **Obstáculo:** Las imágenes de emulador AVD modernas para la arquitectura ARM64 (Apple Silicon) demostraron tener un sistema de archivos `/system` blindado e inmutable.
+* **Intentos Fallidos:** `adb remount` falló por permisos. El arranque con `-writable-system` no fue suficiente. Los comandos manuales de `mount` desde un shell root confirmaron que el sistema de particiones moderno (`system-as-root`) impedía la escritura.
+* **Conclusión de la Fase:** La vía de modificar el sistema en emuladores de Mac M2 no era viable.
 
-4.  **Reto 4: Evasión de Proxy y Anti-Análisis:** Al volver a la app móvil, se descubrió que implementaba defensas activas:
-    * **Proxy Detection:** La app ignoraba el proxy configurado en los ajustes del sistema. Se superó forzando todo el tráfico a través de Burp mediante **reglas `iptables`** en un emulador rooteado.
-    * **Anti-Frida/Debugging:** La app se cerraba al detectar a Frida. Se superó utilizando una técnica de "ataque sigiloso", adjuntando Frida a un proceso ya en ejecución en lugar de lanzar la app con él.
+### Fase 2: El "Crash" de la Automatización Web en macOS
 
-5.  **Solución Final - El Enfoque Híbrido:** Tras interceptar con éxito el tráfico de la API, se diseñó la solución final, que combina la automatización del navegador (solo para el login y la captura del token) con llamadas directas a la API, resultando en un bot mucho más rápido y eficiente.
+Se pivotó hacia la automatización del flujo web, que se descubrió que era usado por la app móvil.
+
+* **Obstáculo:** Tanto Playwright como Selenium, las herramientas estándar de la industria, crasheaban de forma silenciosa e inmediata al intentar lanzar un navegador en el entorno del Mac M2.
+* **Depuración Extrema:** Se recrearon entornos virtuales, se borraron cachés de navegadores, se forzaron reinstalaciones y se usaron logs de depuración (`DEBUG=*`), sin éxito.
+* **Conclusión de la Fase:** Se diagnosticó una incompatibilidad fundamental e irresoluble entre las herramientas de automatización y la configuración específica del sistema (macOS/Python/ARM64).
+
+### Fase 3: La Lucha contra la Interfaz Web (en Windows)
+
+El proyecto se migró a un entorno Windows x86_64, donde Playwright funcionó correctamente. Aquí comenzó la batalla contra la propia página web.
+
+* **Obstáculo:** La web es una Aplicación de Página Única (SPA) muy dinámica, con múltiples pop-ups, banners de cookies y animaciones que generaban `TimeoutErrors` al interactuar con ella.
+* **Solución:** Se desarrolló un script robusto que implementaba:
+    1.  Manejo explícito del banner de cookies, esperando no solo el clic sino la desaparición del elemento.
+    2.  Pausas estratégicas (`wait_for_timeout`) para respetar las animaciones de la UI.
+    3.  Clics forzados (`force=True`) para superar elementos superpuestos ("intercepting pointer events").
+    4.  Lógica de espera explícita para elementos dinámicos (`wait_for`).
+
+### Fase 4: La Caza Final de la API
+
+Con un script de login funcional, el objetivo era capturar el token de sesión y la llamada a la API del QR.
+
+* **Obstáculo:** La llamada a la API deseada no se producía en el momento esperado, causando timeouts en la lógica de captura (`page.expect_request`).
+* **Descubrimiento Clave:** Tras una depuración metódica, se concluyó que la llamada a la API no se disparaba justo después del login, sino tras una secuencia de navegación específica: `Login -> Mi Cuenta -> Club Alcampo`.
+
+### Conclusión Final: Derrotados por la Defensa Anti-Bot
+
+Tras implementar la secuencia de navegación exacta en el script, se encontró el último y definitivo muro.
+
+* **El Problema:** El script ejecutaba todos los pasos a la perfección, pero la llamada final a la API nunca se producía.
+* **El Diagnóstico:** La aplicación web implementa una capa final de seguridad: **"fingerprinting" de navegador**. Es capaz de detectar las sutiles diferencias entre la automatización de Playwright y un usuario humano real. Al detectar el bot, no muestra un error, sino que de forma silenciosa y deliberada **opta por no realizar la petición de red sensible**, dejando al bot en una sesión "zombie" sin acceso a los datos.
+
+Este proyecto, por tanto, se concluye como un **análisis de seguridad exitoso** que ha logrado identificar y documentar múltiples capas de protección de una aplicación de nivel empresarial, culminando en la identificación de una defensa anti-automatización avanzada que impide la finalización del objetivo inicial por esta vía.
 
 ## Descargo de Responsabilidad Ética
 
-Este proyecto se ha realizado con fines puramente educativos y de investigación personal. En ningún momento se ha intentado acceder a datos de otros usuarios, explotar vulnerabilidades o causar daño alguno al servicio. Toda la automatización se ha realizado sobre cuentas de mi propiedad.
+Este proyecto se ha realizado con fines puramente educativos y de investigación personal. Toda la automatización e investigación se ha realizado sobre cuentas de mi propiedad, sin intención de explotar vulnerabilidades ni de afectar negativamente al servicio, a su rendimiento o a sus usuarios.
