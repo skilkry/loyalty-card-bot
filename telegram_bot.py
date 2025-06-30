@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 
-import alcampo_engine
+import engine
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -18,7 +18,7 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.reply(
-        "¡Hola! Soy tu bot de Alcampo.\n"
+        "¡Hola! Soy tu bot.\n"
         "Envíame tus credenciales para obtener tu QR.\n\n"
         "Usa el formato: `/qr tuemail@ejemplo.com:tucontraseña`"
     )
@@ -36,8 +36,8 @@ async def cmd_qr(message: types.Message):
     msg_espera = await message.reply("🤖 Recibido. Procesando... Esto puede tardar hasta un minuto.")
 
     try:
-        print(f"Llamando al motor de Alcampo para {email}...")
-        ruta_del_qr = await alcampo_engine.get_qr_code(email, password)
+        print(f"Llamando al motor para {email}...")
+        ruta_del_qr = await engine.get_qr_code(email, password)
         
         await message.reply_photo(open(ruta_del_qr, "rb"))
         await msg_espera.edit_text("✅ ¡Aquí tienes tu QR!")
